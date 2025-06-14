@@ -1,0 +1,41 @@
+# --- Go ---
+/bin/
+/vendor/
+/*.exe
+/*.exe~
+/*.dll
+/*.so
+/*.dylib
+*.test
+*.out
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+# Исключаем volume data, если она не нужна в гите
+postgres_data/
+
+# --- migrate ---
+# Если ты используешь файловый источник миграций — migrations/ включать
+# Если миграции генерируются и не хранятся в гите — migrations/ добавить в игнор
+# В этом примере **не** игнорируем миграции, но если хочешь — раскомментируй строку ниже:
+# /migrations/
+
+# --- Shell Scripts ---
+# Скрипты в scripts/ отслеживаем, они полезны. Но можно исключить временные или вспомогательные:
+*.bak
+*.tmp
+
+# --- Test data ---
+*.local.*

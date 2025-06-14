@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Message API
+  version: 1.0.0
+
+paths:
+
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - text
+        - created_at
