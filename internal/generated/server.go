@@ -10,8 +10,21 @@ import (
 	"net/http"
 )
 
+// PostSendPushJSONBody defines parameters for PostSendPush.
+type PostSendPushJSONBody struct {
+	Body  string `json:"body"`
+	Title string `json:"title"`
+	Token string `json:"token"`
+}
+
+// PostSendPushJSONRequestBody defines body for PostSendPush for application/json ContentType.
+type PostSendPushJSONRequestBody PostSendPushJSONBody
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Send a push notification
+	// (POST /send-push)
+	PostSendPush(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -22,6 +35,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// PostSendPush operation middleware
+func (siw *ServerInterfaceWrapper) PostSendPush(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostSendPush(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 type UnescapedCookieParamError struct {
 	ParamName string
@@ -136,6 +163,14 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	}
+
+	wrapper := ServerInterfaceWrapper{
+		Handler:            si,
+		HandlerMiddlewares: options.Middlewares,
+		ErrorHandlerFunc:   options.ErrorHandlerFunc,
+	}
+
+	m.HandleFunc("POST "+options.BaseURL+"/send-push", wrapper.PostSendPush)
 
 	return m
 }

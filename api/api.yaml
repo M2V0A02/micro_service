@@ -4,6 +4,33 @@ info:
   version: 1.0.0
 
 paths:
+  /send-push:
+    post:
+      summary: Send a push notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                title:
+                  type: string
+                body:
+                  type: string
+              required:
+                - token
+                - title
+                - body
+      responses:
+        '200':
+          description: Push sent successfully
+        '400':
+          description: Invalid request
+        '500':
+          description: Failed to send push
 
 components:
   schemas:

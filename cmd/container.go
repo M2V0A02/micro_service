@@ -4,11 +4,13 @@ import (
 	"context"
 	"log"
 
+	"notification/internal/service/push"
 	"notification/migrations"
 	"notification/pkg/logger"
 
 	embPg "github.com/fergusstrange/embedded-postgres"
 	"github.com/jmoiron/sqlx"
+	"github.com/segmentio/kafka-go"
 )
 
 // контейнер внешних зависимостей приложения
@@ -20,6 +22,8 @@ type Container struct {
 	embeddedPostgres *embPg.EmbeddedPostgres
 	migrator         *migrations.Migrator
 	logger           *logger.Logger
+	pushService      *push.MockPushService
+	kafkaReader      *kafka.Reader
 }
 
 func NewContainer() *Container {
@@ -39,6 +43,19 @@ func (e *Container) GetGlobalContext() context.Context {
 	}
 
 	return e.gCtx
+}
+
+func (e *Containter) GetKafkaReader() *kafka.Reader {
+	if e.kafkaReader == nil {
+		cfg := e.configuration.GetKafkaConfiguration()
+		e.kafkaReader = kafka.NewReader(kafka.ReaderConfig{
+			Brokers: cfg.Brokers,
+			GroupID: cfg.GroupID,
+			Topic:   cfg.Topic,
+		})
+	}
+
+	return e.kafkaReader
 }
 
 func (e *Container) GetPostgres() *sqlx.DB {
@@ -71,6 +88,14 @@ func (e *Container) GetLogger() *logger.Logger {
 	}
 
 	return e.logger
+}
+
+func (e *Container) GetMockPushService() *push.MockPushService {
+	if e.pushService == nil {
+		e.pushService = push.NewMockPushService(e.GetLogger())
+	}
+
+	return e.pushService
 }
 
 func (e *Container) GetMigrator() *migrations.Migrator {

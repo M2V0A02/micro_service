@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"notification/internal/handler/server"
+	"notification/internal/repository"
 )
 
 // контейнер внутренних зависимостей
@@ -9,7 +10,7 @@ type Internal struct {
 	//external
 	*Container
 
-	// repository     *repository.Repository
+	repository *repository.Repository
 	// testRepository *repository.Repository
 
 	server *server.Server
@@ -19,18 +20,19 @@ func NewInternal(container *Container) *Internal {
 	return &Internal{Container: container}
 }
 
-// func (i *Internal) GetRepository() *repository.Repository {
-// 	if i.repository == nil {
-// 		i.repository = repository.NewRepository(i.GetPostgres())
-// 	}
+func (i *Internal) GetRepository() *repository.Repository {
+	if i.repository == nil {
+		i.repository = repository.NewRepository(i.GetPostgres())
+	}
 
-// 	return i.repository
-// }
+	return i.repository
+}
 
 func (i *Internal) GetServer() *server.Server {
 	if i.server == nil {
 		i.server = server.NewServer(
 			i.GetLogger(),
+			i.GetMockPushService(),
 			i.configuration.GetServerConfiguration().GetAddress(),
 		)
 	}
