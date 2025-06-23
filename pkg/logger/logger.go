@@ -25,9 +25,12 @@ func newContextHandler(h slog.Handler) contextHandler {
 }
 
 func (h *contextHandler) Handle(ctx context.Context, r slog.Record) error {
-	t, _ := ctx.Value(defaultTagName).(fields)
+	t, ok := ctx.Value(defaultTagName).(fields)
+	if !ok {
+		return h.Handler.Handle(ctx, r) // Если полей нет, просто продолжаем без них
+	}
 
-	attrs := make([]slog.Attr, len(t.f))
+	attrs := make([]slog.Attr, 0, len(t.f)) // Инициализируем срез с capacity, но длиной 0
 	for name, value := range t.f {
 		attrs = append(attrs, slog.String(name, value))
 	}
@@ -52,13 +55,19 @@ func buildFields() fields {
 }
 
 func (l *Logger) WithFields(ctx context.Context, f map[string]string) context.Context {
-	var t fields
-
 	t, ok := ctx.Value(defaultTagName).(fields)
 	if !ok {
-		t = buildFields()
+		t = buildFields() // Новый словарь, если полей еще нет
+	} else {
+		// Создаем копию существующего словаря
+		newMap := make(map[string]string, len(t.f)+len(f))
+		for k, v := range t.f {
+			newMap[k] = v
+		}
+		t = fields{f: newMap}
 	}
 
+	// Добавляем новые поля
 	for field, val := range f {
 		t.f[field] = val
 	}

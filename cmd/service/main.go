@@ -1,22 +1,16 @@
 package main
 
 import (
-	"notification/cmd"
+	"context"
+	"notification/pkg/di"
 )
 
 func main() {
-	container := cmd.NewInternal(cmd.NewContainer())
-	// migrator := container.GetMigrator()
-	// err := migrator.MigratorUp()
-	globalCtx := container.GetGlobalContext()
-	server := container.GetServer()
-	log := container.GetLogger()
-
-	ctxFields := map[string]string{
+	container := di.NewContainer()
+	ctx := container.GetLogger().WithFields(context.Background(), map[string]string{
 		"path": "cmd/service/main.go",
 		"name": "main",
-	}
-
-	ctx := log.WithFields(globalCtx, ctxFields)
+	})
+	server := container.GetServer()
 	server.Run(ctx)
 }

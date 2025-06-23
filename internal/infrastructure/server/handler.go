@@ -1,3 +1,4 @@
+// internal/infrastructure/server/handler.go
 package server
 
 import (
@@ -5,27 +6,20 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
-
-	"notification/internal/deps"
+	"notification/internal/application/notification"
 	"notification/internal/generated"
+	"notification/pkg/logger"
 )
 
 type Server struct {
-	logger      deps.Logger
-	pushService deps.PushService
-	address     string
+	service *notification.Service
+	logger  *logger.Logger
+	srv     *http.Server
+	address string
 }
 
-func NewServer(
-	log deps.Logger,
-	pushService deps.PushService,
-	address string,
-) *Server {
-	return &Server{
-		address:     address,
-		pushService: pushService,
-		logger:      log,
-	}
+func NewServer(service *notification.Service, logger *logger.Logger) *Server {
+	return &Server{service: service, logger: logger}
 }
 
 func (s *Server) Run(ctx context.Context) {
@@ -34,37 +28,43 @@ func (s *Server) Run(ctx context.Context) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	h := generated.HandlerFromMux(s, mux)
+	h := generated.HandlerWithOptions(s, generated.StdHTTPServerOptions{
+		BaseRouter: mux,
+	})
 
-	srv := &http.Server{
+	s.srv = &http.Server{
+		Addr:    ":8080", // Добавь явно порт
 		Handler: h,
-		Addr:    s.address,
 		BaseContext: func(l net.Listener) context.Context {
 			return ctx
 		},
 	}
 
-	err := srv.ListenAndServe()
+	err := s.srv.ListenAndServe()
 	if err != nil {
 		s.logger.Error(ctx, err)
 	}
 }
 
-func (s *Server) PostSendPush(w http.ResponseWriter, r *http.Request) {
+func (h *Server) PostSendPush(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token string `json:"token"`
 		Title string `json:"title"`
 		Body  string `json:"body"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.logger.Error(r.Context(), err)
+		h.logger.Error(r.Context(), err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	err := s.pushService.SendPush(r.Context(), req.Token, req.Title, req.Body)
-	if err != nil {
-		s.logger.Error(r.Context(), err)
+	cmd := notification.SendNotificationCommand{
+		Token: req.Token,
+		Title: req.Title,
+		Body:  req.Body,
+	}
+	if err := h.service.SendNotification(r.Context(), cmd); err != nil {
+		h.logger.Error(r.Context(), err)
 		http.Error(w, "Failed to send push", http.StatusInternalServerError)
 		return
 	}

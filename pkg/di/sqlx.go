@@ -1,4 +1,4 @@
-package cmd
+package di
 
 import (
 	"github.com/jmoiron/sqlx"
