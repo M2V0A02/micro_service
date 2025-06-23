@@ -33,6 +33,14 @@ func (s *Service) SendNotification(ctx context.Context, notification *Notificati
 	return s.repo.Save(ctx, &notification.Notification)
 }
 
-func (s *Service) ScheduleDelivery(ctx context.Context, notification *NotificationAggregate) error {
+func (s *Service) SendScheduleNotification(ctx context.Context, notification *NotificationAggregate) error {
+	if err := notification.Validate(); err != nil {
+		return err
+	}
+
+	if err := s.repo.Save(ctx, &notification.Notification); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -8,7 +8,23 @@ package generated
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
+
+// PostSchedulePushJSONBody defines parameters for PostSchedulePush.
+type PostSchedulePushJSONBody struct {
+	// Body Body of the push notification
+	Body string `json:"body"`
+
+	// SendAt Scheduled time for sending the push notification (ISO 8601 format)
+	SendAt time.Time `json:"send_at"`
+
+	// Title Title of the push notification
+	Title string `json:"title"`
+
+	// Token Device token for the recipient
+	Token string `json:"token"`
+}
 
 // PostSendPushJSONBody defines parameters for PostSendPush.
 type PostSendPushJSONBody struct {
@@ -17,11 +33,17 @@ type PostSendPushJSONBody struct {
 	Token string `json:"token"`
 }
 
+// PostSchedulePushJSONRequestBody defines body for PostSchedulePush for application/json ContentType.
+type PostSchedulePushJSONRequestBody PostSchedulePushJSONBody
+
 // PostSendPushJSONRequestBody defines body for PostSendPush for application/json ContentType.
 type PostSendPushJSONRequestBody PostSendPushJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Schedule a push notification for future delivery
+	// (POST /schedule-push)
+	PostSchedulePush(w http.ResponseWriter, r *http.Request)
 	// Send a push notification
 	// (POST /send-push)
 	PostSendPush(w http.ResponseWriter, r *http.Request)
@@ -35,6 +57,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// PostSchedulePush operation middleware
+func (siw *ServerInterfaceWrapper) PostSchedulePush(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostSchedulePush(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // PostSendPush operation middleware
 func (siw *ServerInterfaceWrapper) PostSendPush(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +206,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("POST "+options.BaseURL+"/schedule-push", wrapper.PostSchedulePush)
 	m.HandleFunc("POST "+options.BaseURL+"/send-push", wrapper.PostSendPush)
 
 	return m

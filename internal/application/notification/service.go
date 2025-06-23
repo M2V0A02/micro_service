@@ -18,3 +18,8 @@ func (s *Service) SendNotification(ctx context.Context, cmd SendNotificationComm
 	aggregate := notification.NewNotificationAggregate(cmd.Token, cmd.Title, cmd.Body, time.Now())
 	return s.domainService.SendNotification(ctx, aggregate)
 }
+
+func (s *Service) SendScheduleNotification(ctx context.Context, cmd SendScheduleNotificationCommand) error {
+	aggregate := notification.NewNotificationAggregate(cmd.Token, cmd.Title, cmd.Body, cmd.SentAt)
+	return s.domainService.SendScheduleNotification(ctx, aggregate)
+}

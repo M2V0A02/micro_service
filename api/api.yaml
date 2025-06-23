@@ -31,7 +31,41 @@ paths:
           description: Invalid request
         '500':
           description: Failed to send push
-
+  /schedule-push:
+    post:
+      summary: Schedule a push notification for future delivery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: Device token for the recipient
+                title:
+                  type: string
+                  description: Title of the push notification
+                body:
+                  type: string
+                  description: Body of the push notification
+                send_at:
+                  type: string
+                  format: date-time
+                  description: Scheduled time for sending the push notification (ISO 8601 format)
+              required:
+                - token
+                - title
+                - body
+                - send_at
+      responses:
+        '200':
+          description: Push scheduled successfully
+        '400':
+          description: Invalid request
+        '500':
+          description: Failed to schedule push
 components:
   schemas:
     Message:

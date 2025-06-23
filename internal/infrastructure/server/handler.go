@@ -9,6 +9,7 @@ import (
 	"notification/internal/application/notification"
 	"notification/internal/generated"
 	"notification/pkg/logger"
+	"time"
 )
 
 type Server struct {
@@ -64,6 +65,37 @@ func (h *Server) PostSendPush(w http.ResponseWriter, r *http.Request) {
 		Body:  req.Body,
 	}
 	if err := h.service.SendNotification(r.Context(), cmd); err != nil {
+		h.logger.Error(r.Context(), err)
+		http.Error(w, "Failed to send push", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Push sent successfully"))
+}
+
+func (h *Server) PostSchedulePush(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token  string    `json:"token"`
+		Title  string    `json:"title"`
+		Body   string    `json:"body"`
+		SentAt time.Time `json:"sent_at"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error(r.Context(), err)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	cmd := notification.SendScheduleNotificationCommand{
+		Token:  req.Token,
+		Title:  req.Title,
+		Body:   req.Body,
+		SentAt: req.SentAt,
+	}
+
+	if err := h.service.SendScheduleNotification(r.Context(), cmd); err != nil {
 		h.logger.Error(r.Context(), err)
 		http.Error(w, "Failed to send push", http.StatusInternalServerError)
 		return
