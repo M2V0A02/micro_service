@@ -1,5 +1,6 @@
-BINARY_NAME=notification
-MAIN_PATH=cmd/service/main.go
+include makevars.mk
+
+.PHONY: build run test generate compose-up compose-down clean debug
 
 build:
 	go build -o $(BINARY_NAME) $(MAIN_PATH)
@@ -24,3 +25,8 @@ clean:
 
 debug:
 	dlv debug $(MAIN_PATH) --headless --listen=:2435 --api-version=2 --accept-multiclient
+
+wait-db:
+	@sleep 5
+
+all: compose-up wait-db run
