@@ -1,0 +1,97 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: notification
+        ports:
+          - 5432:5432
+        # Wait until PostgreSQL is ready
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_DB: notification
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_SSL_MODE: disable
+      POSTGRES_MAX_IDLE_CONNECTIONS: 10
+      POSTGRES_MAX_OPEN_CONNECTIONS: 10
+      SERVER_HOST: localhost
+      SERVER_PORT: 8080
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # Cache Go modules
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # Install dependencies
+      - name: Install dependencies
+        run: go mod download
+
+      # Install tools (oapi-codegen, etc.)
+      - name: Install tools
+        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+      # Generate code
+      - name: Run code generation
+        run: go generate ./...
+
+      # Run tests
+      - name: Run tests
+        run: go test ./... -v -cover
+
+      # Run migrations
+      - name: Run database migrations
+        run: |
+          go run ./migrations/main.go up
+        env:
+          DATABASE_URL: ${{ env.POSTGRES_URL }}
+
+      # Build the application
+      - name: Build
+        run: go build -v ./cmd/service
+
+      # Run linter
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
